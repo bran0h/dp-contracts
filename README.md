@@ -49,12 +49,19 @@ $ anvil
 
 ```shell
 $ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
+
+forge script script/Gold.s.sol:GoldScript --rpc-url 127.0.0.1:8545 --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 --broadcast
+
+forge script script/Sword.s.sol:SwordScript --rpc-url 127.0.0.1:8545 --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 --broadcast
 ```
 
 ### Cast
 
 ```shell
 $ cast <subcommand>
+
+cast send --from 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 0xbFc4FDBfb53A129a3E78f4291D5Dd7d00045E18B --value 1000000000000000000 --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
+
 ```
 
 ### Help
