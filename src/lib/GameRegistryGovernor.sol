@@ -39,8 +39,6 @@ contract GameRegistryGovernor is
         GovernorTimelockControl(_timelock)
     {}
 
-    // ... [Previous propose functions remain the same] ...
-
     // Required overrides
 
     function votingDelay() public view override(Governor, GovernorSettings) returns (uint256) {
