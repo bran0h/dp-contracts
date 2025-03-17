@@ -115,7 +115,7 @@ abstract contract GameImplementation is ReentrancyGuard, Pausable, AccessControl
      * @param attributes Attributes to upgrade
      * @param values New values for attributes
      */
-    function proposeUpgrade(address sourceGame, uint256 tokenId, bytes32[] calldata attributes, bytes[] calldata values)
+    function proposeUpgrade(address sourceGame, uint256 tokenId, bytes32[] memory attributes, bytes[] memory values)
         external
         whenNotPaused
         nonReentrant
@@ -234,7 +234,7 @@ abstract contract GameImplementation is ReentrancyGuard, Pausable, AccessControl
     function _updateAttributesInternal(uint256 tokenId, bytes memory encodedAttributes) internal virtual;
 
     /**
-     * @dev Encode attributes - to be implemented by derived contracts
+     * @dev Encode attributes
      */
     function _encodeAttributes(bytes32[] memory attributes, bytes[] memory values)
         internal
@@ -243,7 +243,7 @@ abstract contract GameImplementation is ReentrancyGuard, Pausable, AccessControl
         returns (bytes memory);
 
     /**
-     * @dev Decode attributes - to be implemented by derived contracts
+     * @dev Decode attributes
      */
     function _decodeAttributes(bytes memory data)
         internal

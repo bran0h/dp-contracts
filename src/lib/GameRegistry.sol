@@ -92,6 +92,38 @@ contract GameRegistry is Ownable, IGameRegistry {
     }
 
     /**
+     * @notice Check if a game has permission for specific attributes and token exists
+     * @param game Game address
+     * @param assetContract Asset contract address
+     * @param tokenId Token ID to check
+     * @param attributes Array of attributes to check
+     * @return bool indicating if the game has all permissions and token exists
+     */
+    function validatePermissions(address game, address assetContract, uint256 tokenId, bytes32[] memory attributes)
+        external
+        view
+        returns (bool)
+    {
+        if (!games[game].isRegistered) {
+            return false;
+        }
+
+        // Check if token exists by trying to get its owner
+        try IGameAsset(assetContract).ownerOf(tokenId) returns (address) {
+            // Token exists, now check permissions
+            for (uint256 i = 0; i < attributes.length; i++) {
+                if (attributeOwnership[assetContract][attributes[i]] != game) {
+                    return false;
+                }
+            }
+            return true;
+        } catch {
+            // Token doesn't exist
+            return false;
+        }
+    }
+
+    /**
      * @notice Revoke a game's permission for an asset contract
      * @param game Game address
      * @param assetContract Asset contract address
@@ -157,38 +189,6 @@ contract GameRegistry is Ownable, IGameRegistry {
         require(games[game].assetPermissions[assetContract].isRegistered, "Asset not registered for game");
 
         return games[game].assetPermissions[assetContract].allowedAttributes;
-    }
-
-    /**
-     * @notice Check if a game has permission for specific attributes and token exists
-     * @param game Game address
-     * @param assetContract Asset contract address
-     * @param tokenId Token ID to check
-     * @param attributes Array of attributes to check
-     * @return bool indicating if the game has all permissions and token exists
-     */
-    function validatePermissions(address game, address assetContract, uint256 tokenId, bytes32[] calldata attributes)
-        external
-        view
-        returns (bool)
-    {
-        if (!games[game].isRegistered) {
-            return false;
-        }
-
-        // Check if token exists
-        try IGameAsset(assetContract).ownerOf(tokenId) returns (address) {
-            // Token exists, check permissions
-            for (uint256 i = 0; i < attributes.length; i++) {
-                if (attributeOwnership[assetContract][attributes[i]] != game) {
-                    return false;
-                }
-            }
-            return true;
-        } catch {
-            // Token doesn't exist
-            return false;
-        }
     }
 
     /**

@@ -32,7 +32,7 @@ contract DeployGameSystem is Script {
 
         // 3. Deploy Governor
         uint48 votingDelay = 1; // 1 block
-        uint32 votingPeriod = 50400; // ~1 week
+        uint32 votingPeriod = 10; // 10 blocks
         uint256 quorumPercentage = 4; // 4%
 
         GameRegistryGovernor governor =

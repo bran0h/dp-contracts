@@ -51,6 +51,11 @@ interface IGameRegistry {
      */
     function revokeAssetPermission(address game, address assetContract) external;
 
+    function validatePermissions(address game, address assetContract, uint256 tokenId, bytes32[] memory attributes)
+        external
+        view
+        returns (bool);
+
     /**
      * @notice Check if a game has permission to modify specific attributes
      * @param game Game address
