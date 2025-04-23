@@ -8,12 +8,31 @@ import "../src/lib/GameRegistryGovernor.sol";
 import "../src/lib/GameRegistry.sol";
 
 contract DeployGameSystem is Script {
-    function run() external {
-        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
-        vm.startBroadcast(deployerPrivateKey);
+    GameGovernanceToken public token;
+    GameRegistryTimelock public timelock;
+    GameRegistryGovernor public governor;
+    GameRegistry public registry;
 
+    function run() external {
+        // Load the private key from the environment variable
+        uint256 deployerKey = vm.envUint("PRIVATE_KEY");
+        vm.startBroadcast(deployerKey);
+
+        // Get the deployer address
+        address deployer = vm.addr(deployerKey);
+
+        // Deploy the contracts
+        deployContracts(deployer);
+
+        // Configure the system
+        configureSystem(deployer);
+
+        vm.stopBroadcast();
+    }
+
+    function deployContracts(address admin) private {
         // 1. Deploy Governance Token
-        GameGovernanceToken token = new GameGovernanceToken();
+        token = GameGovernanceToken(0xc39279776440BA59cb0FaFE8F8cF7136eEFF2230);
         console.log("Governance Token deployed at:", address(token));
 
         // 2. Deploy Timelock
@@ -22,12 +41,7 @@ contract DeployGameSystem is Script {
         address[] memory proposers = new address[](0);
         address[] memory executors = new address[](0);
 
-        GameRegistryTimelock timelock = new GameRegistryTimelock(
-            minDelay,
-            proposers,
-            executors,
-            msg.sender // admin
-        );
+        timelock = new GameRegistryTimelock(minDelay, proposers, executors, admin);
         console.log("Timelock deployed at:", address(timelock));
 
         // 3. Deploy Governor
@@ -35,14 +49,16 @@ contract DeployGameSystem is Script {
         uint32 votingPeriod = 10; // 10 blocks
         uint256 quorumPercentage = 4; // 4%
 
-        GameRegistryGovernor governor =
+        governor =
             new GameRegistryGovernor(IVotes(address(token)), timelock, votingDelay, votingPeriod, quorumPercentage);
         console.log("Governor deployed at:", address(governor));
 
         // 4. Deploy GameRegistry
-        GameRegistry registry = new GameRegistry();
+        registry = new GameRegistry();
         console.log("GameRegistry deployed at:", address(registry));
+    }
 
+    function configureSystem(address admin) private {
         // 5. Setup roles and permissions
         bytes32 proposerRole = timelock.PROPOSER_ROLE();
         bytes32 executorRole = timelock.EXECUTOR_ROLE();
@@ -51,14 +67,14 @@ contract DeployGameSystem is Script {
         // Grant roles
         timelock.grantRole(proposerRole, address(governor));
         timelock.grantRole(executorRole, address(0)); // Anyone can execute
-        timelock.revokeRole(adminRole, msg.sender);
 
         // Transfer registry ownership to timelock
         registry.transferOwnership(address(timelock));
 
-        // 6. Mint initial governance tokens if needed
-        token.mint(msg.sender, 1_000_000 * 1e18); // 1 million tokens
+        // 6. Mint initial governance tokens to admin
+        token.mint(admin, 1_000_000 * 1e18); // 1 million tokens
 
-        vm.stopBroadcast();
+        // Only revoke admin role after everything else is set up
+        timelock.revokeRole(adminRole, admin);
     }
 }
