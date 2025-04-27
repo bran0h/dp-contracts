@@ -1,5 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
+pragma abicoder v2;
+pragma experimental ABIEncoderV2;
+
+// Increase stack size for scripts
+uint256 constant INITIAL_STACK_DEPTH = 128;
 
 import "forge-std/Script.sol";
 import "../../src/lib/GameRegistry.sol";
@@ -10,68 +15,92 @@ import "../../src/lib/GameRegistryGovernor.sol";
 import "../../src/RPGame.sol";
 
 contract IntegrationTest is Script {
-    // Contract addresses (fill these in after deployment)
-    address public tokenAddress = vm.envAddress("TOKEN_ADDRESS");
-    address public timelockAddress = vm.envAddress("TIMELOCK_ADDRESS");
-    address public governorAddress = vm.envAddress("GOVERNOR_ADDRESS");
-    address public registryAddress = vm.envAddress("GAME_REGISTRY_ADDRESS");
-    address public rpGameAddress = vm.envAddress("GAME_ADDRESS");
-    address public assetAddress = vm.envAddress("ASSET_ADDRESS");
+    // Contract interfaces
+    GameGovernanceToken public token;
+    GameRegistryTimelock public timelock;
+    GameRegistryGovernor public governor;
+    GameRegistry public registry;
+    RPGame public rpGame;
+    GameAsset public asset;
 
     // Game attributes
     bytes32 constant HASTE_ATTR = keccak256("rpgame.item.haste");
     bytes32 constant DAMAGE_ATTR = keccak256("rpgame.item.damage");
     bytes32 constant SWORD_TYPE = keccak256("SWORD");
 
-    // User addresses (replace with your own addresses)
-    address public player = vm.envAddress("PLAYER_ADDRESS");
-    address public upgrader1 = vm.envAddress("UPGRADER1_ADDRESS");
-    address public upgrader2 = vm.envAddress("UPGRADER2_ADDRESS");
+    // User addresses
+    address public player;
+    address public upgrader1;
+    address public upgrader2;
+
+    function setUp() private {
+        // Load addresses from env
+        address tokenAddress = vm.envAddress("TOKEN_ADDRESS");
+        address timelockAddress = vm.envAddress("TIMELOCK_ADDRESS");
+        address governorAddress = vm.envAddress("GOVERNOR_ADDRESS");
+        address registryAddress = vm.envAddress("GAME_REGISTRY_ADDRESS");
+        address rpGameAddress = vm.envAddress("GAME_ADDRESS");
+        address assetAddress = vm.envAddress("ASSET_ADDRESS");
+
+        // Load user addresses
+        player = vm.envAddress("PLAYER_ADDRESS");
+        upgrader1 = vm.envAddress("UPGRADER1_ADDRESS");
+        upgrader2 = vm.envAddress("UPGRADER2_ADDRESS");
+
+        // Initialize contract interfaces
+        token = GameGovernanceToken(tokenAddress);
+        timelock = GameRegistryTimelock(payable(timelockAddress));
+        governor = GameRegistryGovernor(payable(governorAddress));
+        registry = GameRegistry(registryAddress);
+        rpGame = RPGame(rpGameAddress);
+        asset = GameAsset(assetAddress);
+    }
 
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         vm.startBroadcast(deployerPrivateKey);
 
-        // Initialize contract interfaces
-        GameGovernanceToken token = GameGovernanceToken(tokenAddress);
-        GameRegistryTimelock timelock = GameRegistryTimelock(payable(timelockAddress));
-        GameRegistryGovernor governor = GameRegistryGovernor(payable(governorAddress));
-        GameRegistry registry = GameRegistry(registryAddress);
-        RPGame rpGame = RPGame(rpGameAddress);
-        GameAsset asset = GameAsset(assetAddress);
+        // Setup contracts and addresses
+        setUp();
 
         console.log("Starting integration test...");
 
-        // Mint a sword with initial attributes
-        mintSword(rpGame, asset, player, 1);
+        // Test sword minting and attribute updates
+        testSwordFlow();
 
-        // Read initial attributes
-        (uint256 initialHaste, uint256 initialDamage) = rpGame.getSwordAttributes(assetAddress, 1);
-        console.log("Initial sword attributes - Haste:", initialHaste, "Damage:", initialDamage);
-
-        // Update sword attributes directly
-        updateSwordAttributes(rpGame, 1, 500, 2500);
-
-        // Read updated attributes
-        (uint256 updatedHaste, uint256 updatedDamage) = rpGame.getSwordAttributes(assetAddress, 1);
-        console.log("Updated sword attributes - Haste:", updatedHaste, "Damage:", updatedDamage);
-
-        // Create, approve and execute an upgrade proposal
-        proposeAndExecuteUpgrade(rpGame, 1, 700, 5000);
-
-        // Read final attributes
-        (uint256 finalHaste, uint256 finalDamage) = rpGame.getSwordAttributes(assetAddress, 1);
-        console.log("Final sword attributes - Haste:", finalHaste, "Damage:", finalDamage);
-
-        // Demo governance proposal to register a new game
-        createGovernanceProposal(registry, governor);
+        // Test governance proposal
+        testGovernanceProposal();
 
         console.log("Integration test completed");
 
         vm.stopBroadcast();
     }
 
-    function mintSword(RPGame rpGame, GameAsset asset, address to, uint256 tokenId) internal {
+    function testSwordFlow() private {
+        // Mint a sword
+        uint256 tokenId = 1;
+        mintSword(tokenId);
+
+        // Read initial attributes
+        (uint256 initialHaste, uint256 initialDamage) = rpGame.getSwordAttributes(address(asset), tokenId);
+        console.log("Initial sword attributes - Haste:", initialHaste, "Damage:", initialDamage);
+
+        // Update sword attributes directly
+        updateSwordAttributes(tokenId, 500, 2500);
+
+        // Read updated attributes
+        (uint256 updatedHaste, uint256 updatedDamage) = rpGame.getSwordAttributes(address(asset), tokenId);
+        console.log("Updated sword attributes - Haste:", updatedHaste, "Damage:", updatedDamage);
+
+        // Create, approve and execute an upgrade proposal
+        proposeAndExecuteUpgrade(tokenId, 700, 5000);
+
+        // Read final attributes
+        (uint256 finalHaste, uint256 finalDamage) = rpGame.getSwordAttributes(address(asset), tokenId);
+        console.log("Final sword attributes - Haste:", finalHaste, "Damage:", finalDamage);
+    }
+
+    function mintSword(uint256 tokenId) private {
         // Need to mint from the game contract to have proper permissions
         vm.startPrank(address(rpGame));
 
@@ -83,18 +112,21 @@ contract IntegrationTest is Script {
         values[0] = abi.encode(uint256(100)); // Initial haste
         values[1] = abi.encode(uint256(500)); // Initial damage
 
-        asset.mint(to, tokenId, attributes, values);
-        console.log("Sword minted to:", to, "with tokenId:", tokenId);
+        asset.mint(player, tokenId, attributes, values);
+        console.log("Sword minted to:", player, "with tokenId:", tokenId);
 
         vm.stopPrank();
     }
 
-    function updateSwordAttributes(RPGame rpGame, uint256 tokenId, uint256 haste, uint256 damage) internal {
-        rpGame.updateSwordAttributes(assetAddress, tokenId, haste, damage);
-        console.log("Sword attributes updated - Token:", tokenId, "Haste:", haste, "Damage:", damage);
+    function updateSwordAttributes(uint256 tokenId, uint256 haste, uint256 damage) private {
+        rpGame.updateSwordAttributes(address(asset), tokenId, haste, damage);
+        console.log("Sword attributes updated:");
+        console.log("Token ID:", tokenId);
+        console.log("Haste:", haste);
+        console.log("Damage:", damage);
     }
 
-    function proposeAndExecuteUpgrade(RPGame rpGame, uint256 tokenId, uint256 newHaste, uint256 newDamage) internal {
+    function proposeAndExecuteUpgrade(uint256 tokenId, uint256 newHaste, uint256 newDamage) private {
         // Create upgrade proposal
         address sourceGame = address(0); // Arbitrary source game for example
 
@@ -122,7 +154,7 @@ contract IntegrationTest is Script {
         vm.stopPrank();
     }
 
-    function createGovernanceProposal(GameRegistry registry, GameRegistryGovernor governor) internal {
+    function testGovernanceProposal() private {
         // Create a mock game to register
         address mockGame = address(0x1234);
 
@@ -142,13 +174,6 @@ contract IntegrationTest is Script {
 
         uint256 proposalId = governor.propose(targets, values, calldatas, description);
         console.log("Governance proposal created with ID:", proposalId);
-
-        // Note: In a real scenario, you would need to:
-        // 1. Wait for the voting delay to pass
-        // 2. Cast votes during the voting period
-        // 3. Queue the proposal if it passes
-        // 4. Wait for the timelock delay
-        // 5. Execute the proposal
 
         console.log("Further governance actions would be required to complete this process");
     }
