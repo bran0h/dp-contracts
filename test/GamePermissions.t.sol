@@ -33,17 +33,18 @@ contract GamePermissionsTest is Test {
         registry.registerGame(game2);
     }
 
-    function testFailGrantPermissionToUnregisteredGame() public {
+    function test_RevertWhen_GrantPermissionToUnregisteredGame() public {
         address unregisteredGame = address(0x5);
 
         bytes32[] memory attributes = new bytes32[](1);
         attributes[0] = HEALTH_ATTR;
 
         // Should fail because game is not registered
+        vm.expectRevert();
         registry.grantAssetPermission(unregisteredGame, assetContract, attributes);
     }
 
-    function testFailGrantOverlappingPermissions() public {
+    function test_RevertWhen_GrantOverlappingPermissions() public {
         // First grant HEALTH attribute to game1
         bytes32[] memory attributes1 = new bytes32[](1);
         attributes1[0] = HEALTH_ATTR;
@@ -53,20 +54,23 @@ contract GamePermissionsTest is Test {
         // This should fail because HEALTH is already owned by game1
         bytes32[] memory attributes2 = new bytes32[](1);
         attributes2[0] = HEALTH_ATTR;
+        vm.expectRevert();
         registry.grantAssetPermission(game2, assetContract, attributes2);
     }
 
-    function testFailGrantEmptyAttributes() public {
+    function test_RevertWhen_GrantEmptyAttributes() public {
         // Trying to grant empty attributes array should fail
         bytes32[] memory emptyAttributes = new bytes32[](0);
+        vm.expectRevert();
         registry.grantAssetPermission(game1, assetContract, emptyAttributes);
     }
 
-    function testFailGrantPermissionForInvalidAssetContract() public {
+    function test_RevertWhen_GrantPermissionForInvalidAssetContract() public {
         bytes32[] memory attributes = new bytes32[](1);
         attributes[0] = HEALTH_ATTR;
 
         // Try with zero address for asset contract
+        vm.expectRevert();
         registry.grantAssetPermission(game1, address(0), attributes);
     }
 
@@ -106,12 +110,13 @@ contract GamePermissionsTest is Test {
         assertEq(noOwner, address(0));
     }
 
-    function testFailRevokeUnregisteredPermission() public {
+    function test_RevertWhen_RevokeUnregisteredPermission() public {
         // Try to revoke a permission that wasn't granted
+        vm.expectRevert();
         registry.revokeAssetPermission(game1, assetContract);
     }
 
-    function testFailAccessControl() public {
+    function test_RevertWhen_AccessControl() public {
         // Test that only owner can register games and grant permissions
         vm.prank(user);
 
@@ -119,6 +124,7 @@ contract GamePermissionsTest is Test {
         attributes[0] = HEALTH_ATTR;
 
         // Should fail because caller is not owner
+        vm.expectRevert();
         registry.grantAssetPermission(game1, assetContract, attributes);
     }
 }

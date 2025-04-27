@@ -126,13 +126,15 @@ contract RPGameTest is Test {
         assertEq(updatedDamage, 800);
     }
 
-    function testFailAttributeBoundaries() public {
+    function test_RevertWhen_AttributeBoundaries() public {
         // Try to exceed MAX_HASTE (1000)
+        vm.expectRevert();
         rpGame.updateSwordAttributes(address(asset), 1, 1001, 500);
     }
 
-    function testFailDamageBoundaries() public {
+    function test_RevertWhen_DamageBoundaries() public {
         // Try to exceed MAX_DAMAGE (10000)
+        vm.expectRevert();
         rpGame.updateSwordAttributes(address(asset), 1, 500, 10001);
     }
 
@@ -268,13 +270,14 @@ contract RPGameTest is Test {
         assertEq(newVersion, 2);
     }
 
-    function testFailAttributeVersionDowngrade() public {
+    function test_RevertWhen_AttributeVersionDowngrade() public {
         // Update version to 3
         vm.prank(governor);
         rpGame.updateAttributeVersion(HASTE_ATTR, 3);
 
         // Try to downgrade to 2
         vm.prank(governor);
+        vm.expectRevert();
         rpGame.updateAttributeVersion(HASTE_ATTR, 2);
     }
 
@@ -313,9 +316,10 @@ contract RPGameTest is Test {
         assertGt(uint256(proposalId), 0);
     }
 
-    function testFailUnauthorizedPause() public {
+    function test_RevertWhen_UnauthorizedPause() public {
         // Try to pause from unauthorized account
         vm.prank(player1);
+        vm.expectRevert();
         rpGame.pause();
     }
 
