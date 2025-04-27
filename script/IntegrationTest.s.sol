@@ -2,12 +2,12 @@
 pragma solidity ^0.8.0;
 
 import "forge-std/Script.sol";
-import "../../src/lib/GameRegistry.sol";
-import "../../src/lib/GameAsset.sol";
-import "../../src/lib/GameGovernanceToken.sol";
-import "../../src/lib/GameRegistryTimelock.sol";
-import "../../src/lib/GameRegistryGovernor.sol";
-import "../../src/RPGame.sol";
+import "../src/lib/GameRegistry.sol";
+import "../src/lib/GameAsset.sol";
+import "../src/lib/GameGovernanceToken.sol";
+import "../src/lib/GameRegistryTimelock.sol";
+import "../src/lib/GameRegistryGovernor.sol";
+import "../src/RPGame.sol";
 
 contract IntegrationTest is Script {
     // Contract interfaces
