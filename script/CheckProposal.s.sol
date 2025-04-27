@@ -4,10 +4,11 @@ pragma solidity ^0.8.0;
 import "forge-std/Script.sol";
 import "../src/lib/GameRegistryGovernor.sol";
 
-contract CheckProposalState is Script {
+contract CheckProposal is Script {
     function run() external view {
         address governorAddress = vm.envAddress("GOVERNOR_ADDRESS");
         uint256 proposalId = vm.envUint("PROPOSAL_ID");
+        console.log("Proposal ID:", proposalId);
 
         GameRegistryGovernor governor = GameRegistryGovernor(payable(governorAddress));
 

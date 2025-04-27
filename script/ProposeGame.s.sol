@@ -5,6 +5,7 @@ import "forge-std/Script.sol";
 import "../src/lib/GameRegistryGovernor.sol";
 import "../src/lib/GameGovernanceToken.sol";
 import "../src/lib/GameRegistry.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
 
 contract ProposeGameRegistration is Script {
     function run() external {
@@ -36,11 +37,15 @@ contract ProposeGameRegistration is Script {
         bytes[] memory calldatas = new bytes[](1);
         calldatas[0] = registerCalldata;
 
-        uint256 registrationProposalId =
-            governor.propose(targets, values, calldatas, "Register RPGame in the GameRegistry");
+        string memory gameProposalDescription = string(
+            abi.encodePacked("Register RPGame in the GameRegistry. Timestamp:", Strings.toString(block.timestamp))
+        );
+
+        uint256 registrationProposalId = governor.propose(targets, values, calldatas, gameProposalDescription);
 
         console.log("Game Registration Proposal Created:");
-        console.log("Proposal ID:", registrationProposalId);
+        console.log("GAME_PROPOSAL_ID=", registrationProposalId);
+        console.log("GAME_DESCRIPTION=", gameProposalDescription);
 
         // Second proposal: Grant permissions
         bytes memory grantCalldata =
@@ -48,11 +53,17 @@ contract ProposeGameRegistration is Script {
 
         calldatas[0] = grantCalldata;
 
-        uint256 permissionProposalId =
-            governor.propose(targets, values, calldatas, "Grant sword attributes permissions to RPGame");
+        string memory permissionProposalDescription = string(
+            abi.encodePacked(
+                "Grant sword attributes permissions to RPGame. Timestamp:", Strings.toString(block.timestamp)
+            )
+        );
+
+        uint256 permissionProposalId = governor.propose(targets, values, calldatas, permissionProposalDescription);
 
         console.log("\nPermission Grant Proposal Created:");
-        console.log("Proposal ID:", permissionProposalId);
+        console.log("PERMISSION_PROPOSAL_ID=", permissionProposalId);
+        console.log("PERMISSION_DESCRIPTION=", permissionProposalDescription);
 
         vm.stopBroadcast();
     }

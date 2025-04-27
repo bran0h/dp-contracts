@@ -4,107 +4,163 @@ pragma solidity ^0.8.0;
 import "forge-std/Script.sol";
 import "../src/lib/GameRegistryGovernor.sol";
 import "../src/lib/GameGovernanceToken.sol";
+import "../src/lib/GameRegistryTimelock.sol";
 import "../src/lib/GameRegistry.sol";
 import "../src/lib/IGameRegistry.sol";
 
-contract ExecuteGameRegistration is Script {
-    string constant REGISTER_DESCRIPTION = "Register RPGame in the GameRegistry";
-    string constant PERMISSION_DESCRIPTION = "Grant sword attributes permissions to RPGame";
+contract ExecuteGame is Script {
+    // Define these as contract state variables instead of local variables
+    GameRegistryGovernor governor;
+    GameRegistryTimelock timelock;
+    GameGovernanceToken token;
+    address registryAddress;
+    address gameAddress;
+    bytes32 descriptionHash;
+    uint256 proposalId;
 
     function run() external {
+        // Load environment variables
+        uint256 voterKey = vm.envUint("PRIVATE_KEY");
         address governorAddress = vm.envAddress("GOVERNOR_ADDRESS");
         address tokenAddress = vm.envAddress("TOKEN_ADDRESS");
-        uint256 proposalId = vm.envUint("PROPOSAL_ID");
-        uint256 voterKey = vm.envUint("PRIVATE_KEY");
-        bool isRegistration = vm.envBool("IS_REGISTRATION");
+        registryAddress = vm.envAddress("GAME_REGISTRY_ADDRESS");
+        proposalId = vm.envUint("GAME_PROPOSAL_ID");
+        gameAddress = vm.envAddress("GAME_ADDRESS");
+        string memory proposalDescription = vm.envString("GAME_DESCRIPTION");
 
-        GameRegistryGovernor governor = GameRegistryGovernor(payable(governorAddress));
-        GameGovernanceToken token = GameGovernanceToken(tokenAddress);
+        // Set up contract instances
+        governor = GameRegistryGovernor(payable(governorAddress));
+        timelock = GameRegistryTimelock(payable(governor.timelock()));
+        token = GameGovernanceToken(tokenAddress);
 
-        // Check current state before proceeding
+        // Compute hash once
+        descriptionHash = keccak256(bytes(proposalDescription));
+
+        // Check current state
         IGovernor.ProposalState state = governor.state(proposalId);
         console.log("Current proposal state:", uint256(state));
 
         vm.startBroadcast(voterKey);
 
-        // First, delegate votes to self if not already delegated
-        if (token.delegates(vm.addr(voterKey)) == address(0)) {
-            token.delegate(vm.addr(voterKey));
-            console.log("Delegated votes to self");
-        }
+        // Delegate votes check
+        checkAndDelegateVotes(voterKey);
 
-        // If proposal is active, vote
-        if (state == IGovernor.ProposalState.Active) {
-            // My address
-            console.log("My address:", vm.addr(voterKey));
-            governor.castVote(proposalId, 1);
-            console.log("Vote cast successfully");
-        }
-        // If proposal succeeded, queue it (if using timelock)
-        else if (state == IGovernor.ProposalState.Succeeded) {
-            string memory description = isRegistration ? REGISTER_DESCRIPTION : PERMISSION_DESCRIPTION;
-
-            address[] memory targets = new address[](1);
-            targets[0] = vm.envAddress("REGISTRY_ADDRESS");
-
-            uint256[] memory values = new uint256[](1);
-            values[0] = 0;
-
-            bytes[] memory calldatas = new bytes[](1);
-
-            if (isRegistration) {
-                address gameAddress = vm.envAddress("GAME_ADDRESS");
-                calldatas[0] = abi.encodeWithSelector(IGameRegistry.registerGame.selector, gameAddress);
-            } else {
-                address gameAddress = vm.envAddress("GAME_ADDRESS");
-                address assetAddress = vm.envAddress("ASSET_ADDRESS");
-                bytes32[] memory attributes = new bytes32[](2);
-                attributes[0] = keccak256("rpgame.item.haste");
-                attributes[1] = keccak256("rpgame.item.damage");
-
-                calldatas[0] = abi.encodeWithSelector(
-                    IGameRegistry.grantAssetPermission.selector, gameAddress, assetAddress, attributes
-                );
-            }
-
-            // Queue for execution
-            governor.queue(targets, values, calldatas, keccak256(bytes(description)));
-            console.log("Proposal queued successfully");
-        }
-        // If proposal is queued and timelock elapsed, execute
-        else if (state == IGovernor.ProposalState.Queued) {
-            string memory description = isRegistration ? REGISTER_DESCRIPTION : PERMISSION_DESCRIPTION;
-
-            address[] memory targets = new address[](1);
-            targets[0] = vm.envAddress("REGISTRY_ADDRESS");
-
-            uint256[] memory values = new uint256[](1);
-            values[0] = 0;
-
-            bytes[] memory calldatas = new bytes[](1);
-
-            if (isRegistration) {
-                address gameAddress = vm.envAddress("GAME_ADDRESS");
-                calldatas[0] = abi.encodeWithSelector(IGameRegistry.registerGame.selector, gameAddress);
-            } else {
-                address gameAddress = vm.envAddress("GAME_ADDRESS");
-                address assetAddress = vm.envAddress("ASSET_ADDRESS");
-                bytes32[] memory attributes = new bytes32[](2);
-                attributes[0] = keccak256("rpgame.item.haste");
-                attributes[1] = keccak256("rpgame.item.damage");
-
-                calldatas[0] = abi.encodeWithSelector(
-                    IGameRegistry.grantAssetPermission.selector, gameAddress, assetAddress, attributes
-                );
-            }
-
-            governor.execute(targets, values, calldatas, keccak256(bytes(description)));
-            console.log("Proposal executed successfully");
+        // Process proposal based on state
+        if (state == IGovernor.ProposalState.Succeeded) {
+            queueProposal();
+        } else if (state == IGovernor.ProposalState.Queued) {
+            executeProposal();
         } else {
-            console.log("Proposal not in correct state for action");
-            console.log("Required states: Active (for voting), Succeeded (for queueing), or Queued (for execution)");
+            logProposalState(state);
         }
 
         vm.stopBroadcast();
+    }
+
+    function checkAndDelegateVotes(uint256 voterKey) internal {
+        if (token.delegates(vm.addr(voterKey)) == address(0)) {
+            console.log("Delegating votes to self...");
+            token.delegate(vm.addr(voterKey));
+            console.log("Delegated votes to self!");
+        }
+    }
+
+    function queueProposal() internal {
+        console.log("Proposal succeeded, proceeding to queue...");
+
+        (address[] memory targets, uint256[] memory values, bytes[] memory calldatas) = getProposalParams();
+
+        // Queue for execution
+        governor.queue(targets, values, calldatas, descriptionHash);
+        console.log("Proposal queued successfully");
+    }
+
+    function executeProposal() internal {
+        console.log("Proposal queued, proceeding to execute...");
+
+        (address[] memory targets, uint256[] memory values, bytes[] memory calldatas) = getProposalParams();
+
+        // Calculate the operation ID
+        bytes32 operationId = getOperationId(targets, values, calldatas);
+
+        // Check timelock status
+        checkTimelockStatus(operationId);
+
+        // Execute if ready
+        uint8 operationState = uint8(timelock.getOperationState(operationId));
+        if (operationState == 2) {
+            governor.execute(targets, values, calldatas, descriptionHash);
+            console.log("Proposal executed successfully");
+        } else {
+            console.log("Cannot execute: operation not in Ready state");
+        }
+    }
+
+    function getProposalParams()
+        internal
+        view
+        returns (address[] memory targets, uint256[] memory values, bytes[] memory calldatas)
+    {
+        targets = new address[](1);
+        targets[0] = registryAddress;
+
+        values = new uint256[](1);
+        values[0] = 0;
+
+        calldatas = new bytes[](1);
+        calldatas[0] = abi.encodeWithSelector(IGameRegistry.registerGame.selector, gameAddress);
+
+        return (targets, values, calldatas);
+    }
+
+    function getOperationId(address[] memory targets, uint256[] memory values, bytes[] memory calldatas)
+        internal
+        view
+        returns (bytes32)
+    {
+        // In OpenZeppelin's implementation, when queueing through Governor,
+        // it uses hashOperationBatch even for single operations
+        return timelock.hashOperationBatch(
+            targets,
+            values,
+            calldatas,
+            0, // predecessor (usually 0 for simple operations)
+            bytes20(address(governor)) ^ descriptionHash // salt
+        );
+    }
+
+    function checkTimelockStatus(bytes32 operationId) internal view {
+        console.log("Current timestamp:", block.timestamp);
+        console.log("Operation ready at:", timelock.getTimestamp(operationId));
+        console.log("Minimum delay:", timelock.getMinDelay());
+
+        uint8 operationState = uint8(timelock.getOperationState(operationId));
+        console.log("Operation state:", operationState);
+        console.log("Operation state meanings:");
+        console.log("0: Unset (not found)");
+        console.log("1: Pending (waiting delay)");
+        console.log("2: Ready (can execute)");
+        console.log("3: Done (already executed)");
+        console.log("4: Cancelled");
+
+        if (operationState == 1) {
+            console.log("Operation is still pending. Need to wait until:", timelock.getTimestamp(operationId));
+            uint256 waitTime = timelock.getTimestamp(operationId) - block.timestamp;
+            console.log("Seconds to wait:", waitTime);
+        }
+    }
+
+    function logProposalState(IGovernor.ProposalState state) internal pure {
+        console.log("Proposal not in correct state for action");
+        console.log("Current state:", uint256(state));
+        console.log("State meaning:");
+        console.log("0: Pending");
+        console.log("1: Active");
+        console.log("2: Canceled");
+        console.log("3: Defeated");
+        console.log("4: Succeeded");
+        console.log("5: Queued");
+        console.log("6: Expired");
+        console.log("7: Executed");
     }
 }
