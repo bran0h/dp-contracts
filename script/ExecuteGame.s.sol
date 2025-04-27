@@ -154,13 +154,6 @@ contract ExecuteGame is Script {
         console.log("Proposal not in correct state for action");
         console.log("Current state:", uint256(state));
         console.log("State meaning:");
-        console.log("0: Pending");
-        console.log("1: Active");
-        console.log("2: Canceled");
-        console.log("3: Defeated");
-        console.log("4: Succeeded");
-        console.log("5: Queued");
-        console.log("6: Expired");
-        console.log("7: Executed");
+        console.log("0=Pending, 1=Active, 2=Canceled, 3=Defeated, 4=Succeeded, 5=Queued, 6=Expired, 7=Executed");
     }
 }

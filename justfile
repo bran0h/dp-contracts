@@ -4,18 +4,18 @@ default:
     just --list
 
 [group: 'deploy']
-deploy-system:
+deploy-registry:
     # Deploy the system
-    echo "Deploying system..."
+    echo "Deploying registry..."
     forge script \
         --chain sepolia \
-        script/GameSystem.s.sol:DeployGameSystem \
+        script/DeployGameRegistry.s.sol:DeployGameRegistry \
         --rpc-url $SEPOLIA_RPC_URL \
         --broadcast \
         --verify \
         -vvvv 
     # Add your deployment commands here
-    echo "System deployed successfully!"
+    echo "Registry deployed successfully!"
 
 [group: 'deploy']
 deploy-game:
@@ -23,7 +23,7 @@ deploy-game:
     echo "Deploying game..."
     forge script \
         --chain sepolia \
-        script/DeployGame.s.sol:DeployRPGame \
+        script/DeployGame.s.sol:DeployGame \
         --rpc-url $SEPOLIA_RPC_URL \
         --broadcast \
         --verify \

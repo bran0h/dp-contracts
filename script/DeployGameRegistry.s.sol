@@ -7,7 +7,7 @@ import "../src/lib/GameRegistryTimelock.sol";
 import "../src/lib/GameRegistryGovernor.sol";
 import "../src/lib/GameRegistry.sol";
 
-contract DeployGameSystem is Script {
+contract DeployGameRegistry is Script {
     GameGovernanceToken public token;
     GameRegistryTimelock public timelock;
     GameRegistryGovernor public governor;
@@ -32,7 +32,7 @@ contract DeployGameSystem is Script {
 
     function deployContracts(address admin) private {
         // 1. Deploy Governance Token
-        token = GameGovernanceToken(0xc39279776440BA59cb0FaFE8F8cF7136eEFF2230);
+        token = new GameGovernanceToken();
         console.log("Governance Token deployed at:", address(token));
 
         // 2. Deploy Timelock

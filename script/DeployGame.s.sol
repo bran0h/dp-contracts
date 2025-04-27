@@ -5,28 +5,25 @@ import "forge-std/Script.sol";
 import "../src/lib/GameAsset.sol";
 import "../src/RPGame.sol";
 
-contract DeployRPGame is Script {
+contract DeployGame is Script {
     // Constants for attribute names
     bytes32 public constant HASTE_ATTR = keccak256("rpgame.item.haste");
     bytes32 public constant DAMAGE_ATTR = keccak256("rpgame.item.damage");
+    uint256 public constant REQUIRED_APPROVALS = 3; // Number of approvals needed for proposals
+    uint256 public constant PROPOSAL_TIMEOUT = 7 days; // Proposal expires after 7 days
+    uint256 public constant UPDATE_TIMELOCK = 1 days; // 1 day delay before updates take effect
 
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
-        vm.startBroadcast(deployerPrivateKey);
-
-        // Get existing GameRegistry address
         address gameRegistryAddress = vm.envAddress("GAME_REGISTRY_ADDRESS");
+        vm.startBroadcast(deployerPrivateKey);
 
         // 1. Deploy GameAsset (Sword)
         GameAsset swordAsset = new GameAsset("RPGame Sword", "RPGSWD", gameRegistryAddress);
         console.log("Sword Asset deployed at:", address(swordAsset));
 
         // 2. Deploy RPGame with BaseGameImplementation parameters
-        uint256 requiredApprovals = 3; // Number of approvals needed for proposals
-        uint256 proposalTimeout = 7 days; // Proposal expires after 7 days
-        uint256 updateTimelock = 1 days; // 1 day delay before updates take effect
-
-        RPGame rpGame = new RPGame(gameRegistryAddress, requiredApprovals, proposalTimeout, updateTimelock);
+        RPGame rpGame = new RPGame(gameRegistryAddress, REQUIRED_APPROVALS, PROPOSAL_TIMEOUT, UPDATE_TIMELOCK);
         console.log("RPGame deployed at:", address(rpGame));
 
         // 3. Create attribute permissions array
@@ -52,9 +49,9 @@ contract DeployRPGame is Script {
         console.log("RPGame:", address(rpGame));
         console.log("Sword Asset:", address(swordAsset));
         console.log("Configuration:");
-        console.log("- Required Approvals:", requiredApprovals);
-        console.log("- Proposal Timeout:", proposalTimeout);
-        console.log("- Update Timelock:", updateTimelock);
+        console.log("- Required Approvals:", REQUIRED_APPROVALS);
+        console.log("- Proposal Timeout:", PROPOSAL_TIMEOUT);
+        console.log("- Update Timelock:", UPDATE_TIMELOCK);
         console.log("Attributes to request:");
         console.log("- Haste:", vm.toString(HASTE_ATTR));
         console.log("- Damage:", vm.toString(DAMAGE_ATTR));
