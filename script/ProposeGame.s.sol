@@ -20,8 +20,8 @@ contract ProposeGameRegistration is Script {
 
         // Define attributes
         bytes32[] memory attributes = new bytes32[](2);
-        attributes[0] = keccak256("rpgame.item.haste");
-        attributes[1] = keccak256("rpgame.item.damage");
+        attributes[0] = keccak256("GoodGame.item.haste");
+        attributes[1] = keccak256("GoodGame.item.damage");
 
         vm.startBroadcast(proposerKey);
 
@@ -38,7 +38,7 @@ contract ProposeGameRegistration is Script {
         calldatas[0] = registerCalldata;
 
         string memory gameProposalDescription = string(
-            abi.encodePacked("Register RPGame in the GameRegistry. Timestamp:", Strings.toString(block.timestamp))
+            abi.encodePacked("Register GoodGame in the GameRegistry. Timestamp:", Strings.toString(block.timestamp))
         );
 
         uint256 registrationProposalId = governor.propose(targets, values, calldatas, gameProposalDescription);
@@ -55,7 +55,7 @@ contract ProposeGameRegistration is Script {
 
         string memory permissionProposalDescription = string(
             abi.encodePacked(
-                "Grant sword attributes permissions to RPGame. Timestamp:", Strings.toString(block.timestamp)
+                "Grant sword attributes permissions to GoodGame. Timestamp:", Strings.toString(block.timestamp)
             )
         );
 

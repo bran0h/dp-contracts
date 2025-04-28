@@ -3,12 +3,12 @@ pragma solidity ^0.8.0;
 
 import "forge-std/Script.sol";
 import "../src/lib/GameAsset.sol";
-import "../src/RPGame.sol";
+import "../src/GoodGame.sol";
 
 contract DeployGame is Script {
     // Constants for attribute names
-    bytes32 public constant HASTE_ATTR = keccak256("rpgame.item.haste");
-    bytes32 public constant DAMAGE_ATTR = keccak256("rpgame.item.damage");
+    bytes32 public constant HASTE_ATTR = keccak256("GoodGame.item.haste");
+    bytes32 public constant DAMAGE_ATTR = keccak256("GoodGame.item.damage");
     uint256 public constant REQUIRED_APPROVALS = 3; // Number of approvals needed for proposals
     uint256 public constant PROPOSAL_TIMEOUT = 7 days; // Proposal expires after 7 days
     uint256 public constant UPDATE_TIMELOCK = 1 days; // 1 day delay before updates take effect
@@ -19,12 +19,12 @@ contract DeployGame is Script {
         vm.startBroadcast(deployerPrivateKey);
 
         // 1. Deploy GameAsset (Sword)
-        GameAsset swordAsset = new GameAsset("RPGame Sword", "RPGSWD", gameRegistryAddress);
+        GameAsset swordAsset = new GameAsset("GoodGame Sword", "GGSWD", gameRegistryAddress);
         console.log("Sword Asset deployed at:", address(swordAsset));
 
-        // 2. Deploy RPGame with BaseGameImplementation parameters
-        RPGame rpGame = new RPGame(gameRegistryAddress, REQUIRED_APPROVALS, PROPOSAL_TIMEOUT, UPDATE_TIMELOCK);
-        console.log("RPGame deployed at:", address(rpGame));
+        // 2. Deploy GoodGame with BaseGameImplementation parameters
+        GoodGame goodGame = new GoodGame(gameRegistryAddress, REQUIRED_APPROVALS, PROPOSAL_TIMEOUT, UPDATE_TIMELOCK);
+        console.log("GoodGame deployed at:", address(goodGame));
 
         // 3. Create attribute permissions array
         bytes32[] memory attributes = new bytes32[](2);
@@ -36,7 +36,7 @@ contract DeployGame is Script {
         console.log("Target: GameRegistry at", gameRegistryAddress);
         console.log("Function: grantAssetPermission(address,address,bytes32[])");
         console.log("Parameters:");
-        console.log("- game:", address(rpGame));
+        console.log("- game:", address(goodGame));
         console.log("- assetContract:", address(swordAsset));
         console.log("- attributes[0]:", uint256(attributes[0]));
         console.log("- attributes[1]:", uint256(attributes[1]));
@@ -46,7 +46,7 @@ contract DeployGame is Script {
         // Log deployment summary
         console.log("\nDeployment Summary:");
         console.log("-------------------");
-        console.log("RPGame:", address(rpGame));
+        console.log("GoodGame:", address(goodGame));
         console.log("Sword Asset:", address(swordAsset));
         console.log("Configuration:");
         console.log("- Required Approvals:", REQUIRED_APPROVALS);

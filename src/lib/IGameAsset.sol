@@ -19,4 +19,13 @@ interface IGameAsset is IERC721 {
      * @param values Array of corresponding values
      */
     function updateAttributes(uint256 tokenId, bytes32[] calldata attributeTypes, bytes[] calldata values) external;
+
+    /**
+     * @notice Mint new token with attributes
+     * @param to Address to mint to
+     * @param tokenId Token ID to mint
+     * @param attributeTypes Initial attribute types
+     * @param values Initial attribute values
+     */
+    function mint(address to, uint256 tokenId, bytes32[] calldata attributeTypes, bytes[] calldata values) external;
 }

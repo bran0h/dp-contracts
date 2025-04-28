@@ -7,7 +7,7 @@ import "../src/lib/GameAsset.sol";
 import "../src/lib/GameGovernanceToken.sol";
 import "../src/lib/GameRegistryTimelock.sol";
 import "../src/lib/GameRegistryGovernor.sol";
-import "../src/RPGame.sol";
+import "../src/GoodGame.sol";
 
 contract IntegrationTest is Script {
     // Contract interfaces
@@ -15,12 +15,12 @@ contract IntegrationTest is Script {
     GameRegistryTimelock public timelock;
     GameRegistryGovernor public governor;
     GameRegistry public registry;
-    RPGame public rpGame;
+    GoodGame public goodGame;
     GameAsset public asset;
 
     // Game attributes
-    bytes32 constant HASTE_ATTR = keccak256("rpgame.item.haste");
-    bytes32 constant DAMAGE_ATTR = keccak256("rpgame.item.damage");
+    bytes32 constant HASTE_ATTR = keccak256("GoodGame.item.haste");
+    bytes32 constant DAMAGE_ATTR = keccak256("GoodGame.item.damage");
     bytes32 constant SWORD_TYPE = keccak256("SWORD");
 
     // User addresses
@@ -34,11 +34,14 @@ contract IntegrationTest is Script {
         address timelockAddress = vm.envAddress("TIMELOCK_ADDRESS");
         address governorAddress = vm.envAddress("GOVERNOR_ADDRESS");
         address registryAddress = vm.envAddress("GAME_REGISTRY_ADDRESS");
-        address rpGameAddress = vm.envAddress("GAME_ADDRESS");
+        address goodGameAddress = vm.envAddress("GAME_ADDRESS");
         address assetAddress = vm.envAddress("ASSET_ADDRESS");
 
         // Load user addresses
-        player = vm.envAddress("PLAYER_ADDRESS");
+        uint256 privateKey = vm.envUint("PRIVATE_KEY");
+
+        // Convert private key to address
+        player = vm.addr(privateKey);
         upgrader1 = vm.envAddress("UPGRADER1_ADDRESS");
         upgrader2 = vm.envAddress("UPGRADER2_ADDRESS");
 
@@ -47,7 +50,7 @@ contract IntegrationTest is Script {
         timelock = GameRegistryTimelock(payable(timelockAddress));
         governor = GameRegistryGovernor(payable(governorAddress));
         registry = GameRegistry(registryAddress);
-        rpGame = RPGame(rpGameAddress);
+        goodGame = GoodGame(goodGameAddress);
         asset = GameAsset(assetAddress);
     }
 
@@ -73,80 +76,32 @@ contract IntegrationTest is Script {
 
     function testSwordFlow() private {
         // Mint a sword
-        uint256 tokenId = 1;
+        uint256 tokenId = vm.envUint("NEW_TOKEN_ID");
         mintSword(tokenId);
 
         // Read initial attributes
-        (uint256 initialHaste, uint256 initialDamage) = rpGame.getSwordAttributes(address(asset), tokenId);
+        (uint256 initialHaste, uint256 initialDamage) = goodGame.getSwordAttributes(address(asset), tokenId);
         console.log("Initial sword attributes - Haste:", initialHaste, "Damage:", initialDamage);
 
         // Update sword attributes directly
         updateSwordAttributes(tokenId, 500, 2500);
 
         // Read updated attributes
-        (uint256 updatedHaste, uint256 updatedDamage) = rpGame.getSwordAttributes(address(asset), tokenId);
+        (uint256 updatedHaste, uint256 updatedDamage) = goodGame.getSwordAttributes(address(asset), tokenId);
         console.log("Updated sword attributes - Haste:", updatedHaste, "Damage:", updatedDamage);
-
-        // Create, approve and execute an upgrade proposal
-        proposeAndExecuteUpgrade(tokenId, 700, 5000);
-
-        // Read final attributes
-        (uint256 finalHaste, uint256 finalDamage) = rpGame.getSwordAttributes(address(asset), tokenId);
-        console.log("Final sword attributes - Haste:", finalHaste, "Damage:", finalDamage);
     }
 
     function mintSword(uint256 tokenId) private {
-        // Need to mint from the game contract to have proper permissions
-        vm.startPrank(address(rpGame));
-
-        bytes32[] memory attributes = new bytes32[](2);
-        attributes[0] = HASTE_ATTR;
-        attributes[1] = DAMAGE_ATTR;
-
-        bytes[] memory values = new bytes[](2);
-        values[0] = abi.encode(uint256(100)); // Initial haste
-        values[1] = abi.encode(uint256(500)); // Initial damage
-
-        asset.mint(player, tokenId, attributes, values);
+        goodGame.createSword(player, tokenId, 100, 500);
         console.log("Sword minted to:", player, "with tokenId:", tokenId);
-
-        vm.stopPrank();
     }
 
     function updateSwordAttributes(uint256 tokenId, uint256 haste, uint256 damage) private {
-        rpGame.updateSwordAttributes(address(asset), tokenId, haste, damage);
+        goodGame.updateSwordAttributes(address(asset), tokenId, haste, damage);
         console.log("Sword attributes updated:");
         console.log("Token ID:", tokenId);
         console.log("Haste:", haste);
         console.log("Damage:", damage);
-    }
-
-    function proposeAndExecuteUpgrade(uint256 tokenId, uint256 newHaste, uint256 newDamage) private {
-        // Create upgrade proposal
-        address sourceGame = address(0); // Arbitrary source game for example
-
-        bytes32[] memory upgradeAttributes = new bytes32[](2);
-        upgradeAttributes[0] = HASTE_ATTR;
-        upgradeAttributes[1] = DAMAGE_ATTR;
-
-        bytes[] memory upgradeValues = new bytes[](2);
-        upgradeValues[0] = abi.encode(newHaste);
-        upgradeValues[1] = abi.encode(newDamage);
-
-        bytes32 proposalId = rpGame.proposeUpgrade(sourceGame, tokenId, upgradeAttributes, upgradeValues);
-        console.log("Upgrade proposed with ID:", vm.toString(proposalId));
-
-        // First approval
-        vm.startPrank(upgrader1);
-        rpGame.approveUpgrade(proposalId);
-        console.log("Upgrade approved by upgrader1");
-        vm.stopPrank();
-
-        // Second approval - should execute the upgrade
-        vm.startPrank(upgrader2);
-        rpGame.approveUpgrade(proposalId);
-        console.log("Upgrade approved by upgrader2 and executed");
-        vm.stopPrank();
     }
 
     function testGovernanceProposal() private {

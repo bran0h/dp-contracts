@@ -38,8 +38,8 @@ contract ExecutePermission is Script {
 
         // Initialize attributes
         attributes = new bytes32[](2);
-        attributes[0] = keccak256("rpgame.item.haste");
-        attributes[1] = keccak256("rpgame.item.damage");
+        attributes[0] = keccak256("GoodGame.item.haste");
+        attributes[1] = keccak256("GoodGame.item.damage");
 
         // Compute hash once
         descriptionHash = keccak256(bytes(proposalDescription));

@@ -5,10 +5,11 @@ import "./lib/GameImplementation.sol";
 import "./lib/IGameRegistry.sol";
 import "./lib/IGameAsset.sol";
 
-contract RPGame is GameImplementation {
+contract GoodGame is GameImplementation {
     // Constants for attribute names
-    bytes32 public constant HASTE_ATTR = keccak256("rpgame.item.haste");
-    bytes32 public constant DAMAGE_ATTR = keccak256("rpgame.item.damage");
+    bytes32 public constant HASTE_ATTR = keccak256("GoodGame.item.haste");
+    bytes32 public constant DAMAGE_ATTR = keccak256("GoodGame.item.damage");
+    bytes32 public constant SWORD_ASSET_TYPE = keccak256("GoodGame.asset.sword");
 
     IGameRegistry public immutable gameRegistry;
 
@@ -18,6 +19,7 @@ contract RPGame is GameImplementation {
 
     // Events
     event SwordAttributesUpdated(uint256 indexed tokenId, uint256 haste, uint256 damage);
+    event SwordCreated(address indexed owner, uint256 indexed tokenId, uint256 haste, uint256 damage);
 
     constructor(address gameRegistryAddress, uint256 requiredApprovals, uint256 proposalTimeout, uint256 updateTimelock)
         GameImplementation(requiredApprovals, proposalTimeout, updateTimelock)
@@ -63,6 +65,39 @@ contract RPGame is GameImplementation {
     }
 
     /**
+     * @notice Create a new sword with initial attributes
+     * @param to Address to mint the sword to
+     * @param haste Initial haste value
+     * @param damage Initial damage value
+     * @return tokenId The ID of the newly created sword
+     */
+    function createSword(address to, uint256 tokenId, uint256 haste, uint256 damage)
+        external
+        onlyRole(GOVERNANCE_ROLE)
+        returns (uint256)
+    {
+        require(to != address(0), "Cannot mint to zero address");
+        require(haste <= MAX_HASTE, "Haste exceeds maximum");
+        require(damage <= MAX_DAMAGE, "Damage exceeds maximum");
+        require(assetContracts[SWORD_ASSET_TYPE] != address(0), "Sword asset type not registered");
+
+        // Prepare attributes and values
+        bytes32[] memory attrTypes = new bytes32[](2);
+        attrTypes[0] = HASTE_ATTR;
+        attrTypes[1] = DAMAGE_ATTR;
+
+        bytes[] memory values = new bytes[](2);
+        values[0] = abi.encode(haste);
+        values[1] = abi.encode(damage);
+
+        // Mint the token with initial attributes
+        IGameAsset(assetContracts[SWORD_ASSET_TYPE]).mint(to, tokenId, attrTypes, values);
+
+        emit SwordCreated(to, tokenId, haste, damage);
+        return tokenId;
+    }
+
+    /**
      * @notice Update sword attributes
      * @param assetContract Asset contract address
      * @param tokenId Token ID of the sword
@@ -85,7 +120,7 @@ contract RPGame is GameImplementation {
         // Validate permissions through registry
         require(
             gameRegistry.validatePermissions(address(this), assetContract, tokenId, attrTypes),
-            "RPGame: Invalid permissions"
+            "GoodGame: Invalid permissions"
         );
 
         // Update attributes

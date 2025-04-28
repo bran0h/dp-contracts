@@ -126,10 +126,9 @@ test-integration:
     echo "Running integration tests..."
     forge script \
         --chain sepolia \
-        script/integration/IntegrationTest.s.sol:IntegrationTest \
+        script/IntegrationTest.s.sol:IntegrationTest \
         --rpc-url $SEPOLIA_RPC_URL \
         --broadcast \
-        --verify \
         -vvvv
     # Add your test commands here
     echo "Integration tests completed!"
