@@ -8,6 +8,7 @@ import "../src/lib/GameGovernanceToken.sol";
 import "../src/lib/GameRegistryTimelock.sol";
 import "../src/lib/GameRegistryGovernor.sol";
 import "../src/GoodGame.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
 
 contract IntegrationTest is Script {
     // Contract interfaces
@@ -63,14 +64,15 @@ contract IntegrationTest is Script {
 
         console.log("Starting integration test...");
 
-        // Test sword minting and attribute updates
-        testSwordFlow();
-
         // Test governance proposal
+        console.log("Testing governance proposal to register mock game...");
         testGovernanceProposal();
 
-        console.log("Integration test completed");
+        // Test sword minting and attribute updates
+        console.log("Testing sword minting and attribute updates...");
+        testSwordFlow();
 
+        console.log("Integration test completed");
         vm.stopBroadcast();
     }
 
@@ -81,27 +83,30 @@ contract IntegrationTest is Script {
 
         // Read initial attributes
         (uint256 initialHaste, uint256 initialDamage) = goodGame.getSwordAttributes(address(asset), tokenId);
-        console.log("Initial sword attributes - Haste:", initialHaste, "Damage:", initialDamage);
+        console.log("On-chain sword attributes - Haste:", initialHaste, "Damage:", initialDamage);
 
         // Update sword attributes directly
         updateSwordAttributes(tokenId, 500, 2500);
 
         // Read updated attributes
         (uint256 updatedHaste, uint256 updatedDamage) = goodGame.getSwordAttributes(address(asset), tokenId);
-        console.log("Updated sword attributes - Haste:", updatedHaste, "Damage:", updatedDamage);
+        console.log("Updated on-chain sword attributes - Haste:", updatedHaste, "Damage:", updatedDamage);
     }
 
     function mintSword(uint256 tokenId) private {
+        console.log("Minting sword with tokenId:", tokenId);
+        console.log("Haste: 100");
+        console.log("Damage: 500");
         goodGame.createSword(player, tokenId, 100, 500);
         console.log("Sword minted to:", player, "with tokenId:", tokenId);
     }
 
     function updateSwordAttributes(uint256 tokenId, uint256 haste, uint256 damage) private {
+        console.log("Updating sword attributes for tokenId:", tokenId);
+        console.log("New Haste:", haste);
+        console.log("New Damage:", damage);
         goodGame.updateSwordAttributes(address(asset), tokenId, haste, damage);
-        console.log("Sword attributes updated:");
-        console.log("Token ID:", tokenId);
-        console.log("Haste:", haste);
-        console.log("Damage:", damage);
+        console.log("Sword attributes updated!");
     }
 
     function testGovernanceProposal() private {
@@ -120,11 +125,28 @@ contract IntegrationTest is Script {
         bytes[] memory calldatas = new bytes[](1);
         calldatas[0] = callData;
 
-        string memory description = "Register new mock game";
+        string memory description =
+            string(abi.encodePacked("Register new mock game. Timestamp:", Strings.toString(block.timestamp)));
 
         uint256 proposalId = governor.propose(targets, values, calldatas, description);
         console.log("Governance proposal created with ID:", proposalId);
 
-        console.log("Further governance actions would be required to complete this process");
+        // Get governance state
+        IGovernor.ProposalState state = governor.state(proposalId);
+
+        // Get timing information
+        uint256 snapshot = governor.proposalSnapshot(proposalId);
+        uint256 deadline = governor.proposalDeadline(proposalId);
+        uint256 currentBlock = block.number;
+        (uint256 againstVotes, uint256 forVotes, uint256 abstainVotes) = governor.proposalVotes(proposalId);
+        console.log("Current block:", currentBlock);
+        console.log("Proposal snapshot (start):", snapshot);
+        console.log("Proposal deadline:", deadline);
+        console.log("For votes:", forVotes);
+        console.log("Against votes:", againstVotes);
+        console.log("Abstain votes:", abstainVotes);
+        console.log("Current state:", uint256(state));
+        console.log("State meaning:");
+        console.log("0=Pending, 1=Active, 2=Canceled, 3=Defeated, 4=Succeeded, 5=Queued, 6=Expired, 7=Executed");
     }
 }
